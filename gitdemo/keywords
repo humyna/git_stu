@@ -1,0 +1,104 @@
+1.clone其实和SVN的checkout最像，而git checkout和svn的checkout一点都不像
+2.git pull能把远程的库“拉”回来，其实它是git fetch和git merge两个命令的结合；git push能把本地的库“推”到远程的库去。
+3.Git管理的是“修改”，删除本身也是一种修改，所以需要把这个修改add到暂存区去。
+更方便的一个删除文件的命令是rm
+　　git rm filename1
+这样也不需要在git add -A一下了。
+4.修改文件名[技巧]
+　　git mv filename_old filename_new
+在SVN中，修改文件名会导致此文件丢失修改历史，而Git则可以通过这种方式追溯历史：
+　　git tree —follow filename_new
+5.查看状态[技巧]
+到底哪些文件没变，哪些变了，变了的文件有没放入暂存区，有没有文件被删除或新增？怎么看？用git status。它会明明白白，清清楚楚地告诉你究竟现在是怎么一种情况。但直接用git status命令的话有些凌乱，我们需要更加简洁的信息：git status -sb
+由于这条命令很常用，所以我们可以在~/.gitconfig中配置一下：
+　　[alias]
+　　check = status -sb
+以后直接打“git check”即可，或者你写得更简单点“git ck”，这个命令使用相当频繁。
+6.查看log[技巧]
+当然是“git log”，但显示结果有些乱，不太友好，我们在~/.gitconfig中配置一下：
+　　[alias]
+　　tree = log --graph --pretty=format:'%h %cd %C(yellow)%cn %C(green)%s %C(cyan)%d' --date=short
+这样只要git tree就行了，显示结果还是蛮好看的。
+查看某个文件的修改履历：
+　　git tree filename1
+7.比较
+比较工作区中的某个文件跟以前版本的差别：
+　　git diff b5624a7 filename1
+比较某个文件历史提交之间的差别：
+　　git diff b5624a7 1433ae5 filename1
+有时候可能需要用“--”隔开：
+　　git diff b5624a7 1433ae5 -- filename1 filename2 filename3
+图形工具
+gitk【自带】/SourceTree/Tower[收费]/TortoiseSVN[win]/ExamDiff【可作为gitk的扩展比较工具】/DiffMerge【Mac】【也可作为gitk的外部扩展比较工具】
+
+说明：在gitk中要比较两次提交，可以先选中一次提交，再右击另一处提交，选择“Diff selected -> this”或者“Diff this -> selected”，选哪个，我的原则是旧的在前，新的在后，否则会出现一些理解上的障碍
+
+8.让某一个文件还原为过去的某个版本[技巧]
+要还原成先前的某个版本，当然要show一下它的内容，然后再还原。
+　　git tree filename1
+
+　　#显示filename1在1433ae5这次提交的内容
+　　git show 1433ae5 filename1
+　　git checkout 1433ae5 filename1
+这样并不会改变当前的工作分支，仅仅是修改了filename1的文件内容而已，checkout这里的用法跟SVN的revert比较像。
+
+9.创建、使用和合并分支
+#从当前工作分支（master这个主干也可以看作一个分支哦）中分出一个叫newjob的新分支（-b参数表示新建分支，否则是切换分支）
+　　git checkout -b newjob
+　　#接着干了一些修改
+　　#回到主干
+　　git checkout master
+　　#在主干上做一些修改
+　　#把newjob的修改合并到主干中
+　　git merge newjob
+
+另外，查看所有分支的方法是：git branch -vva
+想要切换到别的分支去干活也很简单，不要带-b参数即可：
+　　#切换到comment4分支
+　　git branch comment4
+分支是临时的，这个与SVN所提倡的使用是一致的，当你这个分支开发完成了之后，要尽快将它合并回主干，然后你可以考虑删除掉分支了。
+　　git branch -d newjob
+
+10.Tag
+SVN中的Tag是个很有用的功能，我通常用它做个“里程碑”，Git中也有Tag：
+　　git tag tagname f11aa6e
+这样就给f11aa6e这个提交取了个tagname，以后就可以用tagname来指代f11aa6e了，好记多了。删除tag：
+　　git tag -d tagname
+
+11.用blame追责[★]
+SVN中有个很有用的命令，blame，可以用来追踪出了问题的某行代码是谁在什么时候改的，Git中也有同样的命令，也叫blame。
+　　git blame filename1
+
+12.还原
+最接近SVN的还原（reverse）应该是：
+　　git reset —hard
+这样一来工作区和暂存区中的修改皆被抛弃掉。
+
+如果仅仅要抛弃掉暂存区的修改，那么：
+　　git reset
+
+13.改变历史[技巧：reset最大的作用在于改变容器的HEAD指向]
+对SVN来说，如果你做了一个错误的提交，那只能用后面的修改来将它改正过来，而不能把历史的提交动作删除，正所谓历史不可改变，这个特性其实对于大多数项目来说是个不错的特性。
+而在Git中，历史是可以改变的！这是Git和SVN的一大不同。
+最最常见的需要改变历史的情况应该是这样：我刚刚commit了一下，但发现comment写错了，我想倒退回来，再重新commit一次：
+
+　　#做了一些改动
+　　git add .
+　　git commit -m "the wrong message"
+
+　　#发现注释写错了
+
+　　#工作区和暂存区都不变，将容器指针指向前一个版本
+　　git reset —soft HEAD^
+　　git commit -m "the correct message"
+
+还可以放弃最近几轮的提交，比如：
+　　git reset —hard HEAD^^^
+
+将还原至前三个版本，放弃最近的三次提交，如果你不记住最后的一次提交的摘要码的话就可能再找不回最近的这几次提交了，如果你还记得住的话，可以这样恢复回最近的提交去：
+　　git reset —hard 1749d74
+
+你猜对了，其实reset最大的作用在于改变容器的HEAD指向，一般情况下不要乱用啊，否则真可能导致辛辛苦苦改动的东西彻底找不回了。
+
+
+ref url:http://www.cnblogs.com/guogangj/p/3602321.html
